@@ -3,7 +3,7 @@
 #a 'main' script for clarity
 
 def main():
-    from interactive_prompt import interactivePrompt
+    from restaurant_selector import interactivePrompt
 
     interactivePrompt()
 

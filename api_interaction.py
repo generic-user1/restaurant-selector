@@ -7,6 +7,9 @@
 #generates a request for a Google Maps API geolocation service
 #this has to be a POST request and as such a simple URL will not suffice
 #returns the generated request without sending it
+from urllib import request
+
+
 def generateGeolocationRequest():
     from urllib.request import Request
     from key_management import getApiKey
@@ -96,22 +99,63 @@ def executePlaceSearchRequest(searchRequestText = None, locationData = None):
         print(f"Attempted to parse {searchResponseText} as JSON, but it was invalid")
         raise
 
-#given a dict from executePlaceSearchRequest, attempts to return 
-#the 'results' list. If a key error occurs (most likely due to unexpected
-# API behavior), returns unmodified input
-#if input is already a list, returns it unmodified
-def getSearchResultsAsList(searchResults):
 
-    #test if list
-    if isinstance(searchResults, list):
-        #if input is a list, return it immediately
-        return searchResults
+#given a pagetoken for the next page of results, generate a Maps API request
+#and return the generated url as text
+def generateNextPageRequest(nextPageToken):
+    from key_management import getApiKey
+    apikey = getApiKey()
 
-    #if not a list, attempt to get as a list
+    urlBase = "https://maps.googleapis.com/maps/api/place/textsearch/json?"
+
+    pagetokenParam = f"pagetoken={nextPageToken}"
+
+    keyParam = f"key={apikey}"
+
+    requestText = f"{urlBase}{pagetokenParam}&{keyParam}"
+
+    return requestText
+
+
+#given a pagetoken for the next page of results, execute a Maps API request
+#to request the next page and return the result
+def executeNextPageRequest(nextPageToken):
+    from urllib.request import urlopen
+    from json import loads as parseJsonString
+    from json.decoder import JSONDecodeError
+   
+    requestText = generateNextPageRequest(nextPageToken)
+
+    searchResponse = urlopen(requestText)
+    searchResponseText = searchResponse.read().decode()
+
     try:
-        resultList = searchResults['results']
-    except KeyError:
-        #if a key error occurs, return unmodified input
-        resultList = searchResults
+        parsedResponse = parseJsonString(searchResponseText)
+        return parsedResponse
+    except JSONDecodeError:
+        print(f"Attempted to parse {searchResponseText} as JSON, but it was invalid")
+        raise
 
-    return resultList
+
+#given the result of a Place search request,
+#returns a generator object that will return
+#each 20-place 'page' of search results
+def getSearchResultPages(searchRequestResults):
+
+    #loop until there are no more search result pages to
+    #display. this check happens AFTER the first page is yielded,
+    #so it is always returned
+    hasNextPage = True
+    while hasNextPage:
+        yield searchRequestResults['results']
+
+        hasNextPage = "next_page_token" in searchRequestResults.keys()
+        
+        if hasNextPage:
+            #if there is a next page, execute another search request 
+            #to retrieve the next page and set searchRequestResults
+            searchRequestResults = executeNextPageRequest(searchRequestResults['next_page_token'])
+
+        #if there is no next page, break the loop and end
+        else:
+            break
