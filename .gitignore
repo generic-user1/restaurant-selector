@@ -128,5 +128,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-#vscode things
+# vscode things
 .vscode/
+
+# api keys (there is probably a better way to do this)
+apikey.txt
