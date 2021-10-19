@@ -24,7 +24,7 @@ def generateGeolocationRequest():
 
 
 #sends a reqest to get user's location and returns the response as a dictionary
-def getLocation(request = None):
+def executeGeolocationRequest(request = None):
     from urllib.request import urlopen
     from json import loads as parseJsonString
     if request == None:
@@ -67,12 +67,12 @@ def generatePlaceSearchRequest(latitude, longitude, searchText = "restaurant", r
 
 #gets the users location and uses it as the basis of a restaurant search
 #return results as a dict
-def executePlaceSearch(locationData = None):
+def executePlaceSearchRequest(locationData = None):
     from urllib.request import urlopen
     from json import loads as parseJsonString
 
     if locationData == None:
-        locationData = getLocation()
+        locationData = executeGeolocationRequest()
 
     latitude = locationData['location']['lat']
     longitude = locationData['location']['lng']
@@ -93,7 +93,7 @@ def executePlaceSearch(locationData = None):
 
 #define a testing method
 def restaurant_selector_test():
-    restaurants = executePlaceSearch()
+    restaurants = executePlaceSearchRequest()
 
     print(restaurants)
 
