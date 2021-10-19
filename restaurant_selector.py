@@ -67,20 +67,21 @@ def generatePlaceSearchRequest(latitude, longitude, searchText = "restaurant", r
 
 #gets the users location and uses it as the basis of a restaurant search
 #return results as a dict
-def executePlaceSearchRequest(locationData = None):
+def executePlaceSearchRequest(searchRequestText = None, locationData = None):
     from urllib.request import urlopen
     from json import loads as parseJsonString
     from json.decoder import JSONDecodeError
 
-    if locationData == None:
+    if searchRequestText == None and locationData == None:
         locationData = executeGeolocationRequest()
 
     latitude = locationData['location']['lat']
     longitude = locationData['location']['lng']
 
-    searchRequest = generatePlaceSearchRequest(latitude, longitude)
+    if searchRequestText == None:
+        searchRequestText = generatePlaceSearchRequest(latitude, longitude)
 
-    searchResponse = urlopen(searchRequest)
+    searchResponse = urlopen(searchRequestText)
     searchResponseText = searchResponse.read().decode()
 
     try:
