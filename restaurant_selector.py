@@ -115,10 +115,8 @@ def getSearchResultsAsList(searchResults):
     return resultList
 
 #given a list of restaurants, returns only those 
-#which are open currently
-#if excludePlaceIds is set to a list of place ids,
-#those places will not be included in the list 
-def getOpenRestaurants(restaurantList, excludePlaceIds=None):
+#which are open currently 
+def getOpenRestaurants(restaurantList):
 
     #ensure input is a list
     restaurantList = getSearchResultsAsList(restaurantList)
@@ -129,15 +127,9 @@ def getOpenRestaurants(restaurantList, excludePlaceIds=None):
     for placeData in restaurantList:
 
         if placeData['opening_hours']['open_now']:
-            #if excludePlaceIds is none, skip checking place id
-            if excludePlaceIds == None:
-                openRestaurantList.append(placeData)
-            else:
-                #if excludePlaceIds is set, ensure this place id 
-                #is not in it before appending
-                if placeData['place_id'] not in excludePlaceIds:
-                    openRestaurantList.append(placeData)
-
+            
+            openRestaurantList.append(placeData)
+            
 
     return openRestaurantList
 
@@ -209,8 +201,12 @@ def printInfoForUser(selectedPlace):
     except KeyError:
         print("Rating unknown")
 
-        #print an empty line to signify the end of info
-        print()
+    #indicate that this place is closed if appropriate
+    if not selectedPlace['opening_hours']['open_now']:
+        print ('### Currently Closed ###')
+    
+    #print an empty line to signify the end of info
+    print()
 
 
 #asks the user for a yes or no
@@ -300,20 +296,8 @@ def getNearbyRestaurants(userLocation=None, searchRange = 10000, searchText = "r
 #  change this option during runtime. This does NOT call any APIs again
 #
 #- searchRange param is the range to search for in meters
-#  note: if the user rejects every open location, and either chooses not to 
-#  include closed locations or has already exhausted the closed locations,
-#  they will be prompted to expand the search range. If they choose yes,
-#  ***this DOES call the Places TextSearch API again*** 
-#  If you do not want to offer this option to the user,
-#  set the restrictedRange parameter to True
 #  
-#  -restrictedRange param, if True, disables the prompt to increase
-#  search radius (restricting the number of API calls)
-#
-#  -excludeIds param is a list of Place Ids to exclude from results.
-#  It is set to None by default, representing an empty list
-def interactivePrompt(userLocation = None,  includeClosed = False,
-    searchRange = 10000, restrictedRange = False, excludeIds = None):
+def interactivePrompt(userLocation = None,  includeClosed = False, searchRange = 10000):
 
     #execute relevant requests if list of restaurants is not provided
     if userLocation == None:
@@ -324,11 +308,14 @@ def interactivePrompt(userLocation = None,  includeClosed = False,
     #convert restaurants to list, if it wasn't one already
     restaurants = getSearchResultsAsList(restaurants)
 
+    #return -1 if no restaurants found at this stage
+    if len(restaurants) == 0:
+        print("No restaurants found within this range!")
+        return -1
+
     if not includeClosed:
         #narrow down restaurants to only those which are currently open
-        #also use excludeIds; this is where they will be filtered
-        #TODO: break excludeId handling into its own function
-        relevantRestaurants = getOpenRestaurants(restaurants, excludeIds)
+        relevantRestaurants = getOpenRestaurants(restaurants)
         
         #get a list of closed restaurants (to expand search with, if needed)
         closedRestaurants = []
@@ -336,15 +323,19 @@ def interactivePrompt(userLocation = None,  includeClosed = False,
             if restaurant not in relevantRestaurants:
                 closedRestaurants.append(restaurant)
 
+        #if no restaurants are relevant, that means all restaurants were closed
+        #however, because of the length check before excluding closed locations,
+        #the fact that this is being executed means there are some restaurants to display
+        #therefore, auto-set includeClosed to true
+        if len(relevantRestaurants) == 0:
+            print("All restaurants are closed! Showing closed locations")
+            includeClosed = True
+            relevantRestaurants = restaurants
+        
     else:
         #if includeClosed is true, all restaurants are relevant
         #closedRestaurants is not set in this case as it would never be used
         relevantRestaurants = restaurants    
-
-    #define list to track restaurants that have already been viewed
-    #place ids are used because indexes or internal ids will not be
-    #consistent over multiple restaurant search results
-    viewedRestaurantIds = []
 
     print("You should eat at:")
 
@@ -356,10 +347,6 @@ def interactivePrompt(userLocation = None,  includeClosed = False,
         selectedRestaurantIndex = pickRestaurantIndex(relevantRestaurants)
         #pop that restaurant from the list so that it isn't repeated
         selectedRestaurant = relevantRestaurants.pop(selectedRestaurantIndex)
-
-        #add the place id of this restaurant
-        #to the list of viewed restaurant ids
-        viewedRestaurantIds.append(selectedRestaurant['place_id'])
 
         #print info on the restaurant that 
         #would be relevant to the user
@@ -396,24 +383,10 @@ def interactivePrompt(userLocation = None,  includeClosed = False,
                         print("How about:")
                         continue
                 
-                #prompt user to expand search area if restrictedRange is False
-                #(this requires an additional Maps API call if y is selected)
-                if not restrictedRange:
-                    if promptYesNo("Expand search area? (y/n): "):
-                        
-                        #if user chooses to expand search area, 
-                        #restart the prompt with the same location but 
-                        #a bigger search range. also set the excludeIds param to
-                        #the already viewed restaurant ids
-                        #note that includeClosed is always set to false
-                        #doing this recursively is probably a bad idea, 
-                        #but *should* be fine, at least for a few expansions
-                        #TODO: refactor interactivePrompt so recursion isn't required
-                        return interactivePrompt(userLocation, False, searchRange*2, 
-                            excludeIds=viewedRestaurantIds)
                         
                 #return None if no restaurant was selected and 
                 #all options to expand have been exhausted
+                print("Sorry I couldn't help :(")
                 return None
 
 
