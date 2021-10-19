@@ -85,3 +85,7 @@ def pickRestaurant(searchResults):
     return searchResultsList[restaurantIndex]
 
 
+#if this file is run as a script, run the main script instead
+if __name__ == "__main__":
+    from main import main
+    main()
