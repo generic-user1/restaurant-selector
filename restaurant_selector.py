@@ -1,10 +1,8 @@
+
+
 #generates a request for a Google Maps API geolocation service
 #this has to be a POST request and as such a simple URL will not suffice
 #returns the generated request without sending it
-from os import close
-from types import resolve_bases
-
-
 def generateGeolocationRequest():
     from urllib.request import Request
     from key_management import getApiKey
